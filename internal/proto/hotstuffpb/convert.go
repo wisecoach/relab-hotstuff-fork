@@ -2,6 +2,8 @@
 package hotstuffpb
 
 import (
+	rhpb "github.com/wisecoach/robust-hotstuff/proto"
+	"google.golang.org/protobuf/proto"
 	"math/big"
 
 	"github.com/relab/hotstuff"
@@ -9,6 +11,30 @@ import (
 	"github.com/relab/hotstuff/crypto/bls12"
 	"github.com/relab/hotstuff/crypto/ecdsa"
 )
+
+func MultiSignatureToProto(sig ecdsa.MultiSignature) *ECDSAMultiSignature {
+	sigs := make([]*ECDSASignature, 0, len(sig))
+	for _, p := range sig {
+		sigs = append(sigs, &ECDSASignature{
+			Signer: uint32(p.Signer()),
+			R:      p.R().Bytes(),
+			S:      p.S().Bytes(),
+		})
+	}
+	return &ECDSAMultiSignature{Sigs: sigs}
+}
+
+func MultiSignatureFromProto(sig *ECDSAMultiSignature) ecdsa.MultiSignature {
+	sigs := make([]*ecdsa.Signature, len(sig.GetSigs()))
+	for i, sig := range sig.GetSigs() {
+		r := new(big.Int)
+		r.SetBytes(sig.GetR())
+		s := new(big.Int)
+		s.SetBytes(sig.GetS())
+		sigs[i] = ecdsa.RestoreSignature(r, s, hotstuff.ID(sig.GetSigner()))
+	}
+	return ecdsa.RestoreMultiSignature(sigs)
+}
 
 // QuorumSignatureToProto converts a threshold signature to a protocol buffers message.
 func QuorumSignatureToProto(sig hotstuff.QuorumSignature) *QuorumSignature {
@@ -114,6 +140,8 @@ func ProposalFromProto(p *Proposal) (proposal hotstuff.ProposeMsg) {
 
 // BlockToProto converts a consensus.Block to a hotstuffpb.Block.
 func BlockToProto(block *hotstuff.Block) *Block {
+	info, _ := proto.Marshal(block.Info)
+	certs, _ := proto.Marshal(block.Certs)
 	parentHash := block.Parent()
 	return &Block{
 		Parent:   parentHash[:],
@@ -121,6 +149,8 @@ func BlockToProto(block *hotstuff.Block) *Block {
 		QC:       QuorumCertToProto(block.QuorumCert()),
 		View:     uint64(block.View()),
 		Proposer: uint32(block.Proposer()),
+		Info:     info,
+		Certs:    certs,
 	}
 }
 
@@ -128,13 +158,18 @@ func BlockToProto(block *hotstuff.Block) *Block {
 func BlockFromProto(block *Block) *hotstuff.Block {
 	var p hotstuff.Hash
 	copy(p[:], block.GetParent())
-	return hotstuff.NewBlock(
+	b := hotstuff.NewBlock(
 		p,
 		QuorumCertFromProto(block.GetQC()),
 		hotstuff.Command(block.GetCommand()),
 		hotstuff.View(block.GetView()),
 		hotstuff.ID(block.GetProposer()),
 	)
+	b.Info = &rhpb.BlockInfo{}
+	b.Certs = &rhpb.BlockCerts{}
+	_ = proto.Unmarshal(block.Info, b.Info)
+	_ = proto.Unmarshal(block.Certs, b.Certs)
+	return b
 }
 
 // TimeoutMsgFromProto converts a TimeoutMsg proto to the hotstuff type.

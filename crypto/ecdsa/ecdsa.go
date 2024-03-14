@@ -175,9 +175,9 @@ func (ec *ecdsaBase) Sign(message []byte) (signature hotstuff.QuorumSignature, e
 
 // Combine combines multiple signatures into a single signature.
 func (ec *ecdsaBase) Combine(signatures ...hotstuff.QuorumSignature) (hotstuff.QuorumSignature, error) {
-	if len(signatures) < 2 {
-		return nil, crypto.ErrCombineMultiple
-	}
+	// if len(signatures) < 2 {
+	// 	return nil, crypto.ErrCombineMultiple
+	// }
 
 	ts := make(MultiSignature)
 

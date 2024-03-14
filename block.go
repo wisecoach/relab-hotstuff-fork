@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"github.com/wisecoach/robust-hotstuff/proto"
 )
 
 // Block contains a propsed "command", metadata for the protocol, and a link to the "parent" block.
@@ -15,6 +16,8 @@ type Block struct {
 	cmd      Command
 	cert     QuorumCert
 	view     View
+	Info     *proto.BlockInfo
+	Certs    *proto.BlockCerts
 }
 
 // NewBlock creates a new Block

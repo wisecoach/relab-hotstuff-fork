@@ -68,6 +68,10 @@ type ForkHandlerExt interface {
 // It is not required that a block is stored forever,
 // but a block must be stored until at least one of its children have been committed.
 type BlockChain interface {
+	Block(height uint64) *hotstuff.Block
+
+	Height() uint64
+
 	// Store stores a block in the blockchain.
 	Store(*hotstuff.Block)
 

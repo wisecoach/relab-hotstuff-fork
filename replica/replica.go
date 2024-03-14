@@ -5,17 +5,21 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"net"
-
-	"github.com/relab/hotstuff/eventloop"
-	"github.com/relab/hotstuff/modules"
-
+	"fmt"
 	"github.com/relab/gorums"
 	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/backend"
+	"github.com/relab/hotstuff/eventloop"
+	"github.com/relab/hotstuff/internal/proto/orchestrationpb"
+	pb "github.com/relab/hotstuff/internal/proto/robusthotstuffpb"
+	"github.com/relab/hotstuff/modules"
+	"github.com/relab/hotstuff/robust-hotstuff/adapters"
+	"github.com/wisecoach/robust-hotstuff/api"
+	"github.com/wisecoach/robust-hotstuff/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"net"
 )
 
 // cmdID is a unique identifier for a command
@@ -54,6 +58,8 @@ type Replica struct {
 	cfg       *backend.Config
 	hsSrv     *backend.Server
 	hs        *modules.Core
+	Consensus api.Consensus
+	Conf      []*orchestrationpb.ReplicaInfo
 
 	execHandlers map[cmdID]func(*emptypb.Empty, error)
 	cancel       context.CancelFunc
@@ -108,12 +114,14 @@ func New(conf Config, builder modules.Builder) (replica *Replica) {
 	builder.Add(
 		srv.cfg,   // configuration
 		srv.hsSrv, // event handling
+		clientSrv,
 
 		modules.ExtendedExecutor(srv.clientSrv),
 		modules.ExtendedForkHandler(srv.clientSrv),
 		srv.clientSrv.cmdCache,
 	)
 	srv.hs = builder.Build()
+	srv.hs.Get(&srv.Consensus)
 
 	return srv
 }
@@ -125,7 +133,22 @@ func (srv *Replica) Modules() *modules.Core {
 
 // StartServers starts the client and replica servers.
 func (srv *Replica) StartServers(replicaListen, clientListen net.Listener) {
-	srv.hsSrv.StartOnListener(replicaListen)
+	var comm *adapters.CommAdapter
+	srv.hs.Get(&comm)
+	grpcServer := grpc.NewServer()
+	pb.RegisterHotstuffServer(grpcServer, comm.Server)
+	go func() {
+		fmt.Println("Starting gRPC server")
+		err := grpcServer.Serve(replicaListen)
+		if err != nil {
+			return
+		}
+	}()
+
+	srv.clientSrv.StartOnListener(clientListen)
+}
+
+func (srv *Replica) StartClientServer(clientListen net.Listener) {
 	srv.clientSrv.StartOnListener(clientListen)
 }
 
@@ -154,12 +177,19 @@ func (srv *Replica) Stop() {
 // Run runs the replica until the context is cancelled.
 func (srv *Replica) Run(ctx context.Context) {
 	var (
-		synchronizer modules.Synchronizer
-		eventLoop    *eventloop.EventLoop
+		// synchronizer modules.Synchronizer
+		eventLoop        *eventloop.EventLoop
+		consensusAdapter *adapters.ConsensusAdapter
 	)
-	srv.hs.Get(&synchronizer, &eventLoop)
+	srv.hs.Get(&eventLoop, &consensusAdapter)
 
-	synchronizer.Start(ctx)
+	// synchronizer.Start(ctx)
+	consensusAdapter.Consensus.Start()
+
+	bk := types.Block(hotstuff.GetGenesis())
+
+	srv.Consensus.ProcessBlock(bk)
+
 	eventLoop.Run(ctx)
 }
 

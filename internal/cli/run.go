@@ -52,7 +52,7 @@ func init() {
 	runCmd.Flags().Int("payload-size", 0, "size in bytes of the command payload")
 	runCmd.Flags().Int("max-concurrent", 4, "maximum number of concurrent commands per client")
 	runCmd.Flags().Duration("client-timeout", 500*time.Millisecond, "Client timeout.")
-	runCmd.Flags().Duration("duration", 10*time.Second, "duration of the experiment")
+	runCmd.Flags().Duration("duration", 10*time.Minute, "duration of the experiment")
 	runCmd.Flags().Duration("connect-timeout", 5*time.Second, "duration of the initial connection timeout")
 	runCmd.Flags().Duration("view-timeout", 100*time.Millisecond, "duration of the first view")
 	runCmd.Flags().Duration("max-timeout", 0, "upper limit on view timeouts")
@@ -105,7 +105,7 @@ func runController() {
 		Duration:    viper.GetDuration("duration"),
 		Output:      outputDir,
 		ReplicaOpts: &orchestrationpb.ReplicaOpts{
-			UseTLS:            true,
+			UseTLS:            false,
 			BatchSize:         viper.GetUint32("batch-size"),
 			TimeoutMultiplier: float32(viper.GetFloat64("timeout-multiplier")),
 			Consensus:         viper.GetString("consensus"),

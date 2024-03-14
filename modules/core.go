@@ -157,3 +157,7 @@ func (b *Builder) Build() *Core {
 	}
 	return &b.core
 }
+
+func (b *Builder) Core() *Core {
+	return &b.core
+}

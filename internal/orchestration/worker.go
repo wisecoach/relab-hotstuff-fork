@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/relab/hotstuff/robust-hotstuff/adapters"
 	"io"
 	"net"
 	"strconv"
@@ -15,8 +16,6 @@ import (
 	"github.com/relab/hotstuff/backend"
 	"github.com/relab/hotstuff/blockchain"
 	"github.com/relab/hotstuff/client"
-	"github.com/relab/hotstuff/consensus"
-	"github.com/relab/hotstuff/consensus/byzantine"
 	"github.com/relab/hotstuff/crypto"
 	"github.com/relab/hotstuff/crypto/keygen"
 	"github.com/relab/hotstuff/eventloop"
@@ -27,7 +26,6 @@ import (
 	"github.com/relab/hotstuff/metrics/types"
 	"github.com/relab/hotstuff/modules"
 	"github.com/relab/hotstuff/replica"
-	"github.com/relab/hotstuff/synchronizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -136,12 +134,22 @@ func (w *Worker) createReplicas(req *orchestrationpb.CreateReplicaRequest) (*orc
 
 		resp.Replicas[cfg.GetID()] = &orchestrationpb.ReplicaInfo{
 			ID:          cfg.GetID(),
+			Address:     "localhost:" + strconv.Itoa(int(replicaPort)),
 			PublicKey:   cfg.GetPublicKey(),
 			ReplicaPort: replicaPort,
 			ClientPort:  clientPort,
 		}
 	}
+	replicaInfos := make([]*orchestrationpb.ReplicaInfo, 0, len(resp.Replicas))
+	for _, info := range resp.Replicas {
+		replicaInfos = append(replicaInfos, info)
+	}
+	hotstuff.InitGenesis(replicaInfos)
 	return resp, nil
+}
+
+func (w *Worker) CreateReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Replica, error) {
+	return w.createReplica(opts)
 }
 
 func (w *Worker) createReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Replica, error) {
@@ -165,42 +173,42 @@ func (w *Worker) createReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Repl
 	// prepare modules
 	builder := modules.NewBuilder(hotstuff.ID(opts.GetID()), privKey)
 
-	consensusRules, ok := modules.GetModule[consensus.Rules](opts.GetConsensus())
-	if !ok {
-		return nil, fmt.Errorf("invalid consensus name: '%s'", opts.GetConsensus())
-	}
-
-	if opts.GetByzantineStrategy() != "" {
-		if byz, ok := modules.GetModule[byzantine.Byzantine](opts.GetByzantineStrategy()); ok {
-			consensusRules = byz.Wrap(consensusRules)
-		} else {
-			return nil, fmt.Errorf("invalid byzantine strategy: '%s'", opts.GetByzantineStrategy())
-		}
-	}
+	// consensusRules, ok := modules.GetModule[consensus.Rules](opts.GetConsensus())
+	// if !ok {
+	// 	return nil, fmt.Errorf("invalid consensus name: '%s'", opts.GetConsensus())
+	// }
+	//
+	// if opts.GetByzantineStrategy() != "" {
+	// 	if byz, ok := modules.GetModule[byzantine.Byzantine](opts.GetByzantineStrategy()); ok {
+	// 		consensusRules = byz.Wrap(consensusRules)
+	// 	} else {
+	// 		return nil, fmt.Errorf("invalid byzantine strategy: '%s'", opts.GetByzantineStrategy())
+	// 	}
+	// }
 
 	cryptoImpl, ok := modules.GetModule[modules.CryptoBase](opts.GetCrypto())
 	if !ok {
 		return nil, fmt.Errorf("invalid crypto name: '%s'", opts.GetCrypto())
 	}
 
-	leaderRotation, ok := modules.GetModule[modules.LeaderRotation](opts.GetLeaderRotation())
-	if !ok {
-		return nil, fmt.Errorf("invalid leader-rotation algorithm: '%s'", opts.GetLeaderRotation())
-	}
+	// leaderRotation, ok := modules.GetModule[modules.LeaderRotation](opts.GetLeaderRotation())
+	// if !ok {
+	// 	return nil, fmt.Errorf("invalid leader-rotation algorithm: '%s'", opts.GetLeaderRotation())
+	// }
 
-	sync := synchronizer.New(synchronizer.NewViewDuration(
-		uint64(opts.GetTimeoutSamples()),
-		float64(opts.GetInitialTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
-		float64(opts.GetMaxTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
-		float64(opts.GetTimeoutMultiplier()),
-	))
+	// sync := synchronizer.New(synchronizer.NewViewDuration(
+	// 	uint64(opts.GetTimeoutSamples()),
+	// 	float64(opts.GetInitialTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
+	// 	float64(opts.GetMaxTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
+	// 	float64(opts.GetTimeoutMultiplier()),
+	// ))
 	builder.Add(
 		eventloop.New(1000),
-		consensus.New(consensusRules),
-		consensus.NewVotingMachine(),
+		// consensus.New(consensusRules),
+		// consensus.NewVotingMachine(),
 		crypto.NewCache(cryptoImpl, 100), // TODO: consider making this configurable
-		leaderRotation,
-		sync,
+		// leaderRotation,
+		// sync,
 		w.metricsLogger,
 		blockchain.New(),
 		logging.New("hs"+strconv.Itoa(int(opts.GetID()))),
@@ -237,6 +245,11 @@ func (w *Worker) createReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Repl
 			gorums.WithGrpcDialOptions(grpc.WithReturnConnectionError()),
 		},
 	}
+	adapters.NewBlockSupportAdapter(&builder)
+	adapters.NewCryptoSupportAdapter(&builder)
+	adapters.NewChainSupportAdapter(&builder)
+	adapters.NewConsensusAdapter(&builder)
+	adapters.NewCommAdapter(&builder, opts)
 	return replica.New(c, builder), nil
 }
 
@@ -289,7 +302,7 @@ func (w *Worker) startClients(req *orchestrationpb.StartClientRequest) (*orchest
 		w.metricsLogger.Log(opts)
 
 		c := client.Config{
-			TLS:           opts.GetUseTLS(),
+			TLS:           false,
 			RootCAs:       cp,
 			MaxConcurrent: opts.GetMaxConcurrent(),
 			PayloadSize:   opts.GetPayloadSize(),

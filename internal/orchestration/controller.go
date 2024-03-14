@@ -86,19 +86,19 @@ func (e *Experiment) Run() (err error) {
 		return fmt.Errorf("failed to start replicas: %w", err)
 	}
 
-	e.Logger.Info("Starting clients...")
-	err = e.startClients(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to start clients: %w", err)
-	}
+	// e.Logger.Info("Starting clients...")
+	// err = e.startClients(cfg)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to start clients: %w", err)
+	// }
 
 	time.Sleep(e.Duration)
 
-	e.Logger.Info("Stopping clients...")
-	err = e.stopClients()
-	if err != nil {
-		return fmt.Errorf("failed to stop clients: %w", err)
-	}
+	// e.Logger.Info("Stopping clients...")
+	// err = e.stopClients()
+	// if err != nil {
+	// 	return fmt.Errorf("failed to stop clients: %w", err)
+	// }
 
 	wait := 5 * e.ReplicaOpts.GetInitialTimeout().AsDuration()
 	e.Logger.Infof("Waiting %s for replicas to finish.", wait)

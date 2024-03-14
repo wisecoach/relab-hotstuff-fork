@@ -216,6 +216,7 @@ func New(name string) Logger {
 			config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		}
 	}
+	config.EncoderConfig.EncodeCaller = zapcore.FullCallerEncoder
 	mut.RLock()
 	config.Level.SetLevel(logLevel)
 	mut.RUnlock()

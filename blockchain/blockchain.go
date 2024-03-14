@@ -20,17 +20,17 @@ type blockChain struct {
 	eventLoop     *eventloop.EventLoop
 	logger        logging.Logger
 
-	mut           sync.Mutex
+	mut           sync.RWMutex
 	pruneHeight   hotstuff.View
 	blocks        map[hotstuff.Hash]*hotstuff.Block
 	blockAtHeight map[hotstuff.View]*hotstuff.Block
+	height2Block  map[uint64]*hotstuff.Block
 	pendingFetch  map[hotstuff.Hash]context.CancelFunc // allows a pending fetch operation to be cancelled
 }
 
 func (chain *blockChain) InitModule(mods *modules.Core) {
 	mods.Get(
 		&chain.configuration,
-		&chain.consensus,
 		&chain.eventLoop,
 		&chain.logger,
 	)
@@ -43,9 +43,26 @@ func New() modules.BlockChain {
 		blocks:        make(map[hotstuff.Hash]*hotstuff.Block),
 		blockAtHeight: make(map[hotstuff.View]*hotstuff.Block),
 		pendingFetch:  make(map[hotstuff.Hash]context.CancelFunc),
+		height2Block:  make(map[uint64]*hotstuff.Block),
 	}
-	bc.Store(hotstuff.GetGenesis())
+	// bc.Store(hotstuff.GetGenesis())
 	return bc
+}
+
+// Height returns the height of the blockchain.
+func (chain *blockChain) Height() uint64 {
+	chain.mut.RLock()
+	defer chain.mut.RUnlock()
+
+	return uint64(len(chain.blocks))
+}
+
+// Block returns the block at the given height.
+func (chain *blockChain) Block(height uint64) *hotstuff.Block {
+	chain.mut.RLock()
+	defer chain.mut.RUnlock()
+
+	return chain.height2Block[height]
 }
 
 // Store stores a block in the blockchain
@@ -55,6 +72,7 @@ func (chain *blockChain) Store(block *hotstuff.Block) {
 
 	chain.blocks[block.Hash()] = block
 	chain.blockAtHeight[block.View()] = block
+	chain.height2Block[block.Info.Height] = block
 
 	// cancel any pending fetch operations
 	if cancel, ok := chain.pendingFetch[block.Hash()]; ok {

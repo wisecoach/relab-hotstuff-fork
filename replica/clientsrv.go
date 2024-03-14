@@ -93,7 +93,7 @@ func (srv *clientSrv) Exec(cmd hotstuff.Command) {
 	batch := new(clientpb.Batch)
 	err := proto.UnmarshalOptions{AllowPartial: true}.Unmarshal([]byte(cmd), batch)
 	if err != nil {
-		srv.logger.Errorf("Failed to unmarshal command: %v", err)
+		// srv.logger.Errorf("Failed to unmarshal command: %v", err)
 		return
 	}
 

@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+option go_package = "github.com/wisecoach/robust-hotstuff/proto";
+
+import "google/protobuf/timestamp.proto";
+
+// ---------------------- common message -------------------------------
+
+enum MessageType {
+    PROPOSAL = 0;
+    VOTE = 1;
+    SYNC_INFO = 2;
+    NEXT_VIEW = 3;
+    BLOCK_RETRIEVE_REQUEST = 4;
+    BLOCK_RETRIEVE_RESPONSE = 5;
+}
+
+message Message {
+    MessageType type = 1;
+    oneof payload {
+        ProposalMsg proposal = 2;
+        VoteMsg vote = 3;
+        SyncInfoMsg sync_info = 4;
+        NextViewMsg next_view = 5;
+        BlockRetrieveRequest block_retrieve_request = 6;
+        BlockRetrieveResponse block_retrieve_response = 7;
+    }
+}
+
+// --------------------- remote message --------------------------------
+
+message ProposalMsg {
+    Proposal proposal = 1;
+    SyncInfo sync_info = 2;
+}
+
+message VoteMsg {
+    Vote vote = 1;
+    SyncInfo sync_info = 2;
+}
+
+message SyncInfoMsg {
+    SyncInfo sync_info = 1;
+}
+
+message NextViewMsg {
+    NextView next_view = 1;
+    SyncInfo sync_info = 2;
+}
+
+message BlockRetrieveRequest {
+    bytes block_hash = 1;
+    uint64 start_height = 2;
+    uint64 num_blocks = 3;
+}
+
+enum BlockRetrieveStatus {
+    SUCCESS = 0;        // block retrieve successfully
+    NOT_FOUND = 1;      // starting block not found
+    NOT_ENOUGH = 2;     // not enough blocks to retrieve for the request
+    ERROR = 3;          // error occurs when retrieving blocks
+}
+
+message BlockRetrieveResponse {
+    BlockRetrieveStatus status = 1;
+    repeated bytes blocks = 2;
+}
+
+message CompensateMsg {
+    Compensation compensation = 1;
+    SyncInfo sync_info = 2;
+}
+
+// --------------------------- basic message ---------------------------------
+
+enum PhaseType {
+    PREPARE = 0;
+    PRECOMMIT = 1;
+    COMMIT = 2;
+    DECIDE = 3;
+}
+
+message BlockInfo {
+    uint64 epoch = 1;
+    uint64 view = 2;
+    uint64 height = 3;
+    bytes block_hash = 4;
+    bytes parent_hash = 5;
+    google.protobuf.Timestamp timestamp = 6;
+    string proposer = 7;
+}
+
+message QuorumCert {
+    PhaseType type = 1;
+    uint64 epoch = 2;
+    uint64 view = 3;
+    BlockInfo block_info = 4;
+    map<string, bytes> signatures = 5;
+}
+
+// ---------------------------- sync message ----------------------------------
+
+// Timeout will be generated when replica local timeout with its epoch and view
+message Timeout {
+    uint64 epoch = 1;
+    uint64 view = 2;
+}
+
+// TimeoutCert will be aggregated by leader which receive NextViewMsg including Timeout
+message TimeoutCert {
+    Timeout timeout = 1;
+    map<string, bytes> signatures = 2;
+}
+
+// SyncInfo used for replicas to sync
+message SyncInfo {
+    QuorumCert highest_qc = 1;      // highest prepareQC
+    QuorumCert locked_qc = 2;       // highest lockedQC
+    QuorumCert commit_qc = 3;       // highest commitQC
+    NextViewCert next_view_cert = 4;     // highest next_view_cert
+}
+
+// ----------------------------- proposal message ------------------------------
+
+message Proposal {
+    PhaseType type = 1;
+    QuorumCert qc = 2;
+    optional bytes block = 3;           // block will be nil when type != Prepare
+}
+
+// ----------------------------- vote message ------------------------------
+
+message VoteData {
+    uint64 epoch = 1;
+    uint64 view = 2;
+    bytes proposal_hash = 3;
+    bytes block_hash = 4;
+}
+
+message Vote {
+    PhaseType type = 1;
+    string voter = 2;
+    bytes signature = 3;
+    VoteData vote_data = 4;
+}
+
+// ----------------------------- next-view message ------------------------------
+
+// NextViewReason is the reason for next view
+enum NextViewReason {
+    QCREADY = 0;        // commitQC is generated and block is successfully committed
+    TIMEOUT = 1;        // curView timeouts
+}
+
+// Compensation used for a replica to compensate its reputation loss because of missing vote in NextViewCert
+message Compensation {
+    repeated NextView next_views = 1;
+}
+
+message NextView {
+    string voter = 1;
+    NextViewReason reason = 2;
+    NextViewPayload payload = 3;
+    bytes signature = 4;
+}
+
+message NextViewPayload {
+    uint64 epoch = 1;
+    uint64 view = 2;
+    QuorumCert high_qc = 3;
+    optional Timeout timeout = 4;
+    map<string, Compensation> compensations = 5;
+}
+
+message NextViewCert {
+    map<string, NextView> next_views = 1;
+    uint64 epoch = 2;
+    uint64 view = 3;
+}
+
+// BlockCerts include QuorumCerts to commit previous block and NextViewCert to propose block
+message BlockCerts {
+    QuorumCert prepare_qc = 1;
+    QuorumCert precommit_qc = 2;
+    QuorumCert commit_qc = 3;
+    NextViewCert next_view_cert = 4;
+}

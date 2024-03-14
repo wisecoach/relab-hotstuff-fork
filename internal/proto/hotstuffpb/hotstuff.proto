@@ -41,6 +41,8 @@ message Block {
   uint64 View = 3;
   bytes Command = 4;
   uint32 Proposer = 5;
+  bytes info = 6;
+  bytes certs = 7;
 }
 
 message ECDSASignature {
