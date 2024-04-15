@@ -41,5 +41,6 @@ func (s *Service) handleMessage(stream ConsensusStream) error {
 		return err
 	}
 
-	return s.Dispatcher.DispatchConsensus(stream.Context(), msg)
+	go s.Dispatcher.DispatchConsensus(stream.Context(), msg)
+	return nil
 }

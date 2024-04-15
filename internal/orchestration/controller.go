@@ -86,19 +86,19 @@ func (e *Experiment) Run() (err error) {
 		return fmt.Errorf("failed to start replicas: %w", err)
 	}
 
-	// e.Logger.Info("Starting clients...")
-	// err = e.startClients(cfg)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to start clients: %w", err)
-	// }
+	e.Logger.Info("Starting clients...")
+	err = e.startClients(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to start clients: %w", err)
+	}
 
 	time.Sleep(e.Duration)
 
-	// e.Logger.Info("Stopping clients...")
-	// err = e.stopClients()
-	// if err != nil {
-	// 	return fmt.Errorf("failed to stop clients: %w", err)
-	// }
+	e.Logger.Info("Stopping clients...")
+	err = e.stopClients()
+	if err != nil {
+		return fmt.Errorf("failed to stop clients: %w", err)
+	}
 
 	wait := 5 * e.ReplicaOpts.GetInitialTimeout().AsDuration()
 	e.Logger.Infof("Waiting %s for replicas to finish.", wait)
@@ -123,6 +123,7 @@ func (e *Experiment) createReplicas() (cfg *orchestrationpb.ReplicaConfiguration
 	cfg = &orchestrationpb.ReplicaConfiguration{Replicas: make(map[uint32]*orchestrationpb.ReplicaInfo)}
 
 	for host, worker := range e.Hosts {
+		e.Logger.Debugf("Creating replicas on host %s", host)
 		internalAddr := e.HostConfigs[host].InternalAddress
 
 		req := &orchestrationpb.CreateReplicaRequest{Replicas: make(map[uint32]*orchestrationpb.ReplicaOpts)}
@@ -156,7 +157,11 @@ func (e *Experiment) createReplicas() (cfg *orchestrationpb.ReplicaConfiguration
 			opts.CertificateKey = keyChain.CertificateKey
 			req.Replicas[opts.ID] = opts
 		}
+		e.Logger.Debugf("begin to create replica %s", host)
 		wcfg, err := worker.CreateReplica(req)
+
+		e.Logger.Debugf("create replica %s: %v", host, wcfg.Replicas)
+
 		if err != nil {
 			return nil, err
 		}

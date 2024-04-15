@@ -28,7 +28,7 @@ func New(dialer SecureDialer, compareCert CertificateComparator, H Handler) *Com
 		CertExpWarningThreshold:          time.Hour,
 		shutdownSignal:                   make(chan struct{}),
 		shutdown:                         false,
-		SendBufferSize:                   2000,
+		SendBufferSize:                   1024,
 		Lock:                             sync.RWMutex{},
 		H:                                H,
 		Connections:                      NewConnectionStore(dialer),
@@ -66,7 +66,6 @@ type requestContext struct {
 }
 
 func (c *Comm) Send(id types.ID, msg *proto.Message) error {
-	c.logger.Debugf("begin to send message, to = %s, type = %s", id, msg.Type)
 	dest := string(id)
 
 	stream, err := c.getOrCreateStream(dest)
@@ -75,14 +74,14 @@ func (c *Comm) Send(id types.ID, msg *proto.Message) error {
 		return err
 	}
 
-	// c.consensusLock.Lock()
-	// defer c.consensusLock.Unlock()
+	c.consensusLock.Lock()
+	defer c.consensusLock.Unlock()
 
 	c.logger.Debugf("sending message, to = %s, type = %s", id, msg.Type)
 
 	err = stream.Send(msg)
 	if err != nil {
-		c.logger.Error("failed to send message", zap.Error(err))
+		c.logger.Error("failed to send message")
 	}
 	return err
 }
@@ -96,8 +95,8 @@ func (c *Comm) Broadcast(msg *proto.Message) error {
 		}
 	}
 
-	// c.consensusLock.Lock()
-	// defer c.consensusLock.Unlock()
+	c.consensusLock.Lock()
+	defer c.consensusLock.Unlock()
 	c.logger.Debugf("broadcast message, type = %s, num = %d", msg.Type, len(streamsToSend))
 
 	job := sync.WaitGroup{}
@@ -106,7 +105,7 @@ func (c *Comm) Broadcast(msg *proto.Message) error {
 		go func(stream *Stream) {
 			err := stream.Send(msg)
 			if err != nil {
-				c.logger.Error("failed to broadcast message", zap.Error(err))
+				c.logger.Error("failed to broadcast message")
 			}
 			job.Done()
 		}(stream)
@@ -116,12 +115,42 @@ func (c *Comm) Broadcast(msg *proto.Message) error {
 	return nil
 }
 
+func (c *Comm) Multicast(targets []types.ID, msg *proto.Message) error {
+	streamsToSend := make(map[string]*Stream)
+	for _, id := range targets {
+		stream, err := c.getOrCreateStream(string(id))
+		if err == nil {
+			streamsToSend[string(id)] = stream
+		}
+	}
+
+	c.consensusLock.Lock()
+	defer c.consensusLock.Unlock()
+	c.logger.Debugf("multicast message, type = %s, num = %d", msg.Type, len(streamsToSend))
+
+	job := sync.WaitGroup{}
+	job.Add(len(streamsToSend))
+	for _, stream := range streamsToSend {
+		go func(stream *Stream) {
+			err := stream.Send(msg)
+			if err != nil {
+				c.logger.Error("failed to multicast message")
+			}
+			job.Done()
+		}(stream)
+	}
+	job.Wait()
+
+	return nil
+
+}
+
 func (c *Comm) Configure(nodes map[string]*types.RemoteNode) {
 
 	c.rpcLock.Lock()
 	defer c.rpcLock.Unlock()
 
-	c.logger.Debug("configuring comm", zap.Any("num_nodes", len(nodes)))
+	c.logger.Debugf("configuring comm, num_nodes = %d", len(nodes))
 
 	inUsedSet := make(map[string]*types.RemoteNode)
 	for id, stub := range c.Members.id2stub {
@@ -174,7 +203,7 @@ func (c *Comm) getOrCreateStream(destination string) (*Stream, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	stream, err = stub.NewStream(c.Timeout)
+	stream, err = stub.NewStream(destination, c.Timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +234,9 @@ func (c *Comm) cleanCanceledStreams() {
 }
 
 func (c *Comm) DispatchConsensus(ctx context.Context, request *proto.Message) error {
+	if request == nil {
+		return errors.New("nil request")
+	}
 	reqCtx, err := c.requestContext(ctx, request)
 	if err != nil {
 		return err

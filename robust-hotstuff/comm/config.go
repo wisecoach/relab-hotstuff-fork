@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	DefaultMaxRecvMsgSize = 100 * 1024 * 1024
-	DefaultMaxSendMsgSize = 100 * 1024 * 1024
+	DefaultMaxRecvMsgSize = 50000 * 1024 * 1024
+	DefaultMaxSendMsgSize = 50000 * 1024 * 1024
 )
 
 type DynamicClientCredentials struct {

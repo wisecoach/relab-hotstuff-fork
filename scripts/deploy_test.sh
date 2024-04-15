@@ -24,7 +24,7 @@ compose_args="--project-name=hotstuff"
 docker-compose $compose_args up -d --build --scale worker=4
 
 docker-compose $compose_args exec -T controller /bin/sh -c "ssh-keyscan -H $(join ' ' "${hosts[@]}") >> ~/.ssh/known_hosts" &>/dev/null
-docker-compose $compose_args exec -T controller /bin/sh -c "hotstuff run --hosts '$(join ',' "${hosts[@]}")' --config ./example_config.toml --log-level info"
+docker-compose $compose_args exec -T controller /bin/sh -c "hotstuff run --hosts '$(join ',' "${hosts[@]}")' --config ./example_config.toml --log-level debug --batch-size 100 --max-concurrent 10000"
 exit_code="$?"
 
 docker-compose $compose_args down

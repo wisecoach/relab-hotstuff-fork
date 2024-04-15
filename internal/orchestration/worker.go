@@ -8,6 +8,7 @@ import (
 	"github.com/relab/hotstuff/robust-hotstuff/adapters"
 	"io"
 	"net"
+	"sort"
 	"strconv"
 	"time"
 
@@ -105,14 +106,15 @@ func NewWorker(send *protostream.Writer, recv *protostream.Reader, dl metrics.Lo
 
 func (w *Worker) createReplicas(req *orchestrationpb.CreateReplicaRequest) (*orchestrationpb.CreateReplicaResponse, error) {
 	resp := &orchestrationpb.CreateReplicaResponse{Replicas: make(map[uint32]*orchestrationpb.ReplicaInfo)}
-	for _, cfg := range req.GetReplicas() {
+	for i, cfg := range req.GetReplicas() {
 		r, err := w.createReplica(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create replica: %w", err)
 		}
-
+		rPort := 11000 + i*2
+		cPort := 11000 + i*2 + 1
 		// set up listeners and get the ports
-		replicaListener, err := net.Listen("tcp", ":0")
+		replicaListener, err := net.Listen("tcp", ":"+strconv.Itoa(int(rPort)))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create listener: %w", err)
 		}
@@ -120,7 +122,7 @@ func (w *Worker) createReplicas(req *orchestrationpb.CreateReplicaRequest) (*orc
 		if err != nil {
 			return nil, err
 		}
-		clientListener, err := net.Listen("tcp", ":0")
+		clientListener, err := net.Listen("tcp", ":"+strconv.Itoa(int(cPort)))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create listener: %w", err)
 		}
@@ -134,17 +136,12 @@ func (w *Worker) createReplicas(req *orchestrationpb.CreateReplicaRequest) (*orc
 
 		resp.Replicas[cfg.GetID()] = &orchestrationpb.ReplicaInfo{
 			ID:          cfg.GetID(),
-			Address:     "localhost:" + strconv.Itoa(int(replicaPort)),
+			Address:     replicaListener.Addr().String(),
 			PublicKey:   cfg.GetPublicKey(),
 			ReplicaPort: replicaPort,
 			ClientPort:  clientPort,
 		}
 	}
-	replicaInfos := make([]*orchestrationpb.ReplicaInfo, 0, len(resp.Replicas))
-	for _, info := range resp.Replicas {
-		replicaInfos = append(replicaInfos, info)
-	}
-	hotstuff.InitGenesis(replicaInfos)
 	return resp, nil
 }
 
@@ -173,42 +170,14 @@ func (w *Worker) createReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Repl
 	// prepare modules
 	builder := modules.NewBuilder(hotstuff.ID(opts.GetID()), privKey)
 
-	// consensusRules, ok := modules.GetModule[consensus.Rules](opts.GetConsensus())
-	// if !ok {
-	// 	return nil, fmt.Errorf("invalid consensus name: '%s'", opts.GetConsensus())
-	// }
-	//
-	// if opts.GetByzantineStrategy() != "" {
-	// 	if byz, ok := modules.GetModule[byzantine.Byzantine](opts.GetByzantineStrategy()); ok {
-	// 		consensusRules = byz.Wrap(consensusRules)
-	// 	} else {
-	// 		return nil, fmt.Errorf("invalid byzantine strategy: '%s'", opts.GetByzantineStrategy())
-	// 	}
-	// }
-
 	cryptoImpl, ok := modules.GetModule[modules.CryptoBase](opts.GetCrypto())
 	if !ok {
 		return nil, fmt.Errorf("invalid crypto name: '%s'", opts.GetCrypto())
 	}
 
-	// leaderRotation, ok := modules.GetModule[modules.LeaderRotation](opts.GetLeaderRotation())
-	// if !ok {
-	// 	return nil, fmt.Errorf("invalid leader-rotation algorithm: '%s'", opts.GetLeaderRotation())
-	// }
-
-	// sync := synchronizer.New(synchronizer.NewViewDuration(
-	// 	uint64(opts.GetTimeoutSamples()),
-	// 	float64(opts.GetInitialTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
-	// 	float64(opts.GetMaxTimeout().AsDuration().Nanoseconds())/float64(time.Millisecond),
-	// 	float64(opts.GetTimeoutMultiplier()),
-	// ))
 	builder.Add(
 		eventloop.New(1000),
-		// consensus.New(consensusRules),
-		// consensus.NewVotingMachine(),
 		crypto.NewCache(cryptoImpl, 100), // TODO: consider making this configurable
-		// leaderRotation,
-		// sync,
 		w.metricsLogger,
 		blockchain.New(),
 		logging.New("hs"+strconv.Itoa(int(opts.GetID()))),
@@ -244,17 +213,19 @@ func (w *Worker) createReplica(opts *orchestrationpb.ReplicaOpts) (*replica.Repl
 			gorums.WithDialTimeout(opts.GetConnectTimeout().AsDuration()),
 			gorums.WithGrpcDialOptions(grpc.WithReturnConnectionError()),
 		},
+		NewEpochRate:     opts.GetNewEpochRate(),
+		NewEpochDuration: opts.GetNewEpochDuration().AsDuration(),
 	}
 	adapters.NewBlockSupportAdapter(&builder)
 	adapters.NewCryptoSupportAdapter(&builder)
-	adapters.NewChainSupportAdapter(&builder)
-	adapters.NewConsensusAdapter(&builder)
+	adapters.NewChainSupportAdapter(&builder, opts.NewEpochRate, opts.NewEpochDuration.AsDuration(), c.ID != 1)
+	adapters.NewConsensusAdapter(&builder, opts.ByzantineStrategy, opts.LeaderRotation)
 	adapters.NewCommAdapter(&builder, opts)
 	return replica.New(c, builder), nil
 }
 
 func (w *Worker) startReplicas(req *orchestrationpb.StartReplicaRequest) (*orchestrationpb.StartReplicaResponse, error) {
-	for _, id := range req.GetIDs() {
+	for index, id := range req.GetIDs() {
 		replica, ok := w.replicas[hotstuff.ID(id)]
 		if !ok {
 			return nil, status.Errorf(codes.NotFound, "The replica with ID %d was not found.", id)
@@ -268,10 +239,32 @@ func (w *Worker) startReplicas(req *orchestrationpb.StartReplicaRequest) (*orche
 			return nil, err
 		}
 
-		defer func(id uint32) {
-			w.metricsLogger.Log(&types.StartEvent{Event: types.NewReplicaEvent(id, time.Now())})
-			replica.Start()
-		}(id)
+		newEpochRate := replica.Conf.NewEpochRate
+		genesisReplicaNum := int(float64(len(cfg)) * (1 - newEpochRate))
+
+		replicaInfos := make([]*orchestrationpb.ReplicaInfo, 0, len(req.GetConfiguration()))
+		for _, info := range req.GetConfiguration() {
+			replicaInfos = append(replicaInfos, info)
+		}
+		sort.Slice(replicaInfos, func(i, j int) bool { return replicaInfos[i].ID < replicaInfos[j].ID })
+
+		hotstuff.InitGenesis(replicaInfos[:genesisReplicaNum])
+		if genesisReplicaNum < len(replicaInfos) {
+			hotstuff.InitNewEpoch(replicaInfos[genesisReplicaNum:])
+		}
+
+		if index < genesisReplicaNum {
+			defer func(id uint32) {
+				w.metricsLogger.Log(&types.StartEvent{Event: types.NewReplicaEvent(id, time.Now())})
+				replica.Start()
+			}(id)
+		} else {
+			defer func(id uint32) {
+				<-time.After(replica.Conf.NewEpochDuration)
+				w.metricsLogger.Log(&types.StartEvent{Event: types.NewReplicaEvent(id, time.Now())})
+				replica.Start()
+			}(id)
+		}
 	}
 	return &orchestrationpb.StartReplicaResponse{}, nil
 }

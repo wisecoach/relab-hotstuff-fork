@@ -25,7 +25,7 @@ type RemoteContext struct {
 	nextStreamID                     uint64
 }
 
-func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
+func (rc *RemoteContext) NewStream(nodeName string, timeout time.Duration) (*Stream, error) {
 	// if err := rc.ProbeConn(rc.conn); err != nil {
 	// 	return nil, err
 	// }
@@ -65,6 +65,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		commShutdown:    rc.shutdownSignal,
 		ID:              streamID,
 		Endpoint:        rc.endpoint,
+		NodeName:        nodeName,
 		Timeout:         timeout,
 		ConsensusClient: stream,
 		Cancel:          cancelWithReason,

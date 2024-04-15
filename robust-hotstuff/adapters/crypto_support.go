@@ -1,8 +1,13 @@
 package adapters
 
 import (
+	"crypto/ecdsa"
 	"crypto/sha256"
-	"github.com/relab/hotstuff/crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
+	"github.com/relab/hotstuff"
+	hecdsa "github.com/relab/hotstuff/crypto/ecdsa"
+
 	hpb "github.com/relab/hotstuff/internal/proto/hotstuffpb"
 	"github.com/relab/hotstuff/modules"
 	"github.com/wisecoach/robust-hotstuff/types"
@@ -36,7 +41,7 @@ func (c *CryptoSupportAdapter) Sign(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	signPb := hpb.MultiSignatureToProto(sign.(ecdsa.MultiSignature))
+	signPb := hpb.MultiSignatureToProto(sign.(hecdsa.MultiSignature))
 	bytes, err := proto.Marshal(signPb)
 	if err != nil {
 		return nil, err
@@ -50,11 +55,43 @@ func (c *CryptoSupportAdapter) Hash(data []byte) []byte {
 }
 
 func (c *CryptoSupportAdapter) Verify(data []byte, signature []byte, pk []byte) bool {
-	var ecdsaSig *hpb.ECDSAMultiSignature
-	err := proto.Unmarshal(signature, ecdsaSig)
+	ecdsaSig := &hpb.ECDSAMultiSignature{}
+
+	decode, _ := pem.Decode(pk)
+	publicKey, err := x509.ParsePKIXPublicKey(decode.Bytes)
 	if err != nil {
 		return false
 	}
+
+	if err := proto.Unmarshal(signature, ecdsaSig); err != nil {
+		return false
+	}
 	sig := hpb.MultiSignatureFromProto(ecdsaSig)
-	return c.crypto.Verify(sig, data)
+
+	n := sig.Participants().Len()
+	if n == 0 {
+		return false
+	}
+
+	results := make(chan bool, n)
+	hash := sha256.Sum256(data)
+
+	for _, sig := range sig {
+		go func(sig *hecdsa.Signature, hash hotstuff.Hash) {
+			results <- c.verifySingle(sig, hash, publicKey.(*ecdsa.PublicKey))
+		}(sig, hash)
+	}
+
+	valid := true
+	for range sig {
+		if !<-results {
+			valid = false
+		}
+	}
+
+	return valid
+}
+
+func (c *CryptoSupportAdapter) verifySingle(sig *hecdsa.Signature, hash hotstuff.Hash, pk *ecdsa.PublicKey) bool {
+	return ecdsa.Verify(pk, hash[:], sig.R(), sig.S())
 }

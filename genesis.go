@@ -5,11 +5,14 @@ import (
 	"github.com/relab/hotstuff/internal/proto/orchestrationpb"
 	"github.com/wisecoach/robust-hotstuff/proto"
 	"github.com/wisecoach/robust-hotstuff/types"
+	"sort"
 	"strconv"
 	"time"
 )
 
 var genesisBlock = NewBlock(Hash{}, QuorumCert{}, "", 0, 0)
+var firstEpoch *types.NewEpoch
+var newEpochCmd Command
 
 // GetGenesis returns a pointer to the genesis block, the starting point for the hotstuff blockchain.
 func GetGenesis() *Block {
@@ -27,7 +30,7 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 		nodes[id] = &types.RemoteNode{
 			NodeAddress: types.NodeAddress{
 				ID:       id,
-				Endpoint: info.Address,
+				Endpoint: info.Address + ":" + strconv.Itoa(int(info.ReplicaPort)),
 			},
 			NodeCerts: types.NodeCerts{
 				ServerTLSCert: nil,
@@ -37,36 +40,46 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			},
 		}
 	}
+	sort.Strings(idQueue)
 	config := &types.OnChainConfig{
 		ChainId:  "test",
 		Replicas: replicas,
 		IdQueue:  idQueue,
 		ReputationConfig: &types.OnChainReputationConfig{
-			LRMax:        100,
-			LRDefault:    50,
-			LRThreshold:  10,
-			SRMax:        100,
-			SRDefault:    50,
-			SRThreshold:  10,
-			Theta:        0.5,
-			LRGrowth:     0.1,
-			LRDecay:      0.1,
-			LRCompensate: 0.1,
-			SRGrowth:     0.1,
-			SRDecay:      0.1,
+			LRInit:              0.5,
+			LRDefault:           0.2,
+			LRThreshold:         0.3,
+			SRInit:              0.5,
+			SRDefault:           0.5,
+			SRThreshold:         0.3,
+			LRLearnRate:         0.1,
+			LRGrowth:            0.005,
+			LRDecay:             0.8,
+			LRCompensate:        0.01,
+			SRGrowth:            0.01,
+			SRDecay:             0.9,
+			CompensateThreshold: 100,
+			AWeight:             0.33,
+			SWeight:             0.33,
+			PWeight:             0.34,
+			Da:                  0.8,
+			Wcd:                 0.5,
+			Dcd:                 0.8,
+			Dlq:                 0.8,
+			Ptimeout:            0.5,
 		},
-		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Second * 3},
+		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Millisecond * 5000},
 		CommConfig: &types.OnChainCommConfig{
 			Nodes: nodes,
 		},
 	}
-	newEpoch := &types.NewEpoch{
+	firstEpoch = &types.NewEpoch{
 		Epoch:      1,
 		View:       1,
 		Config:     config,
 		Signatures: nil,
 	}
-	bytes, err := json.Marshal(newEpoch)
+	bytes, err := json.Marshal(firstEpoch)
 	if err != nil {
 		return
 	}
@@ -111,4 +124,37 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 		},
 	}
 	genesisBlock = block
+}
+
+func GetNewEpochCmd() Command {
+	return newEpochCmd
+}
+
+func InitNewEpoch(newReplicaInfos []*orchestrationpb.ReplicaInfo) {
+	newEpoch := firstEpoch
+	newEpoch.Epoch += 1
+	config := newEpoch.Config
+	for _, info := range newReplicaInfos {
+		id := strconv.Itoa(int(info.ID))
+		config.Replicas[id] = info.PublicKey
+		config.IdQueue = append(config.IdQueue, id)
+		config.CommConfig.Nodes[id] = &types.RemoteNode{
+			NodeAddress: types.NodeAddress{
+				ID:       id,
+				Endpoint: info.Address + ":" + strconv.Itoa(int(info.ReplicaPort)),
+			},
+			NodeCerts: types.NodeCerts{
+				ServerTLSCert: nil,
+				ClientTLSCert: nil,
+				ServerRootCA:  nil,
+				Identity:      info.PublicKey,
+			},
+		}
+	}
+	sort.Strings(config.IdQueue)
+	bytes, err := json.Marshal(newEpoch)
+	if err != nil {
+		return
+	}
+	newEpochCmd = Command(bytes)
 }

@@ -5,12 +5,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/relab/gorums"
 	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/backend"
 	"github.com/relab/hotstuff/eventloop"
-	"github.com/relab/hotstuff/internal/proto/orchestrationpb"
 	pb "github.com/relab/hotstuff/internal/proto/robusthotstuffpb"
 	"github.com/relab/hotstuff/modules"
 	"github.com/relab/hotstuff/robust-hotstuff/adapters"
@@ -20,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"net"
+	"time"
 )
 
 // cmdID is a unique identifier for a command
@@ -50,6 +49,10 @@ type Config struct {
 	ManagerOptions []gorums.ManagerOption
 	// Location information of all replicas
 	LocationInfo map[hotstuff.ID]string
+	// rate of replica join in new epoch
+	NewEpochRate float64
+	// time to start new epoch
+	NewEpochDuration time.Duration
 }
 
 // Replica is a participant in the consensus protocol.
@@ -59,7 +62,7 @@ type Replica struct {
 	hsSrv     *backend.Server
 	hs        *modules.Core
 	Consensus api.Consensus
-	Conf      []*orchestrationpb.ReplicaInfo
+	Conf      Config
 
 	execHandlers map[cmdID]func(*emptypb.Empty, error)
 	cancel       context.CancelFunc
@@ -79,6 +82,7 @@ func New(conf Config, builder modules.Builder) (replica *Replica) {
 	clientSrv := newClientServer(conf, clientSrvOpts)
 
 	srv := &Replica{
+		Conf:         conf,
 		clientSrv:    clientSrv,
 		execHandlers: make(map[cmdID]func(*emptypb.Empty, error)),
 		cancel:       func() {},
@@ -138,7 +142,6 @@ func (srv *Replica) StartServers(replicaListen, clientListen net.Listener) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterHotstuffServer(grpcServer, comm.Server)
 	go func() {
-		fmt.Println("Starting gRPC server")
 		err := grpcServer.Serve(replicaListen)
 		if err != nil {
 			return
@@ -187,6 +190,8 @@ func (srv *Replica) Run(ctx context.Context) {
 	consensusAdapter.Consensus.Start()
 
 	bk := types.Block(hotstuff.GetGenesis())
+
+	<-time.After(1 * time.Second)
 
 	srv.Consensus.ProcessBlock(bk)
 

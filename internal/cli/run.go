@@ -46,13 +46,13 @@ using the '--host' parameter. This should be a comma separated list of hostnames
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().Int("replicas", 4, "number of replicas to run")
+	runCmd.Flags().Int("replicas", 12, "number of replicas to run")
 	runCmd.Flags().Int("clients", 1, "number of clients to run")
 	runCmd.Flags().Int("batch-size", 1, "number of commands to batch together in each block")
 	runCmd.Flags().Int("payload-size", 0, "size in bytes of the command payload")
 	runCmd.Flags().Int("max-concurrent", 4, "maximum number of concurrent commands per client")
-	runCmd.Flags().Duration("client-timeout", 500*time.Millisecond, "Client timeout.")
-	runCmd.Flags().Duration("duration", 10*time.Minute, "duration of the experiment")
+	runCmd.Flags().Duration("client-timeout", 5000*time.Hour, "Client timeout.")
+	runCmd.Flags().Duration("duration", 10*time.Second, "duration of the experiment")
 	runCmd.Flags().Duration("connect-timeout", 5*time.Second, "duration of the initial connection timeout")
 	runCmd.Flags().Duration("view-timeout", 100*time.Millisecond, "duration of the first view")
 	runCmd.Flags().Duration("max-timeout", 0, "upper limit on view timeouts")
@@ -60,7 +60,7 @@ func init() {
 	runCmd.Flags().Float32("timeout-multiplier", 1.2, "number to multiply the view duration by in case of a timeout")
 	runCmd.Flags().String("consensus", "chainedhotstuff", "name of the consensus implementation")
 	runCmd.Flags().String("crypto", "ecdsa", "name of the crypto implementation")
-	runCmd.Flags().String("leader-rotation", "round-robin", "name of the leader rotation algorithm")
+	runCmd.Flags().String("leader-rotation", "reputation", "name of the leader rotation algorithm")
 	runCmd.Flags().Int64("shared-seed", 0, "Shared random number generator seed")
 	runCmd.Flags().StringSlice("modules", nil, "Name additional modules to be loaded.")
 
@@ -69,18 +69,20 @@ func init() {
 	runCmd.Flags().String("exe", "", "path to the executable to deploy and run on remote workers")
 	runCmd.Flags().String("ssh-config", "", "path to ssh_config file to resolve host aliases (defaults to ~/.ssh/config)")
 
-	runCmd.Flags().String("output", "", "the directory to save data and profiles to (disabled by default)")
+	runCmd.Flags().String("output", "/home/wisecoach/go/src/relab-hotstuff-fork/scripts", "the directory to save data and profiles to (disabled by default)")
 	runCmd.Flags().Bool("cpu-profile", false, "enable cpu profiling")
 	runCmd.Flags().Bool("mem-profile", false, "enable memory profiling")
 	runCmd.Flags().Bool("trace", false, "enable trace")
 	runCmd.Flags().Bool("fgprof-profile", false, "enable fgprof")
 
 	runCmd.Flags().StringSlice("metrics", []string{"client-latency", "throughput"}, "list of metrics to enable")
-	runCmd.Flags().Duration("measurement-interval", 0, "time interval between measurements")
+	runCmd.Flags().Duration("measurement-interval", 1000*time.Millisecond, "time interval between measurements")
 	runCmd.Flags().Float64("rate-limit", math.Inf(1), "rate limit for clients (in commands/second)")
 	runCmd.Flags().Float64("rate-step", 0, "rate limit step up for clients (in commands/second)")
 	runCmd.Flags().Duration("rate-step-interval", time.Hour, "how often the client rate limit should be increased")
 	runCmd.Flags().StringSlice("byzantine", nil, "byzantine strategies to use, as a comma separated list of 'name:count'")
+	runCmd.Flags().Float64("new-epoch-rate", 0, "rate of replica join in new epoch, disabled by default")
+	runCmd.Flags().Duration("new-epoch-duration", 2*time.Second, "rate of replica join in new epoch")
 
 	err := viper.BindPFlags(runCmd.Flags())
 	if err != nil {
@@ -97,6 +99,8 @@ func runController() {
 		err = os.MkdirAll(outputDir, 0o755)
 		checkf("failed to create output directory: %v", err)
 	}
+
+	fmt.Printf("outputDir: %s\n", outputDir)
 
 	experiment := orchestration.Experiment{
 		Logger:      logging.New("ctrl"),
@@ -117,6 +121,8 @@ func runController() {
 			MaxTimeout:        durationpb.New(viper.GetDuration("max-timeout")),
 			SharedSeed:        viper.GetInt64("shared-seed"),
 			Modules:           viper.GetStringSlice("modules"),
+			NewEpochRate:      viper.GetFloat64("new-epoch-rate"),
+			NewEpochDuration:  durationpb.New(viper.GetDuration("new-epoch-duration")),
 		},
 		ClientOpts: &orchestrationpb.ClientOpts{
 			UseTLS:           true,

@@ -44,6 +44,7 @@ func (c *cmdCache) addCommand(cmd *clientpb.Command) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	if serialNo := c.serialNumbers[cmd.GetClientID()]; serialNo >= cmd.GetSequenceNumber() {
+		c.logger.Infof("command is too old, serialNo = %d, cmdSeq = %d", serialNo, cmd.GetSequenceNumber())
 		// command is too old
 		return
 	}
@@ -76,10 +77,13 @@ awaitBatch:
 
 	// Get the batch. Note that we may not be able to fill the batch, but that should be fine as long as we can send
 	// at least one command.
+	// for i := 0; len(batch.Commands) < c.batchSize; i++ {
 	for i := 0; i < c.batchSize; i++ {
 		elem := c.cache.Front()
 		if elem == nil {
 			break
+			// c.logger.Infof("cache is not enough, need retry")
+			// goto awaitBatch
 		}
 		c.cache.Remove(elem)
 		cmd := elem.Value.(*clientpb.Command)

@@ -18,9 +18,9 @@ import (
 
 func main() {
 
-	logging.SetLogLevel("debug")
+	logging.SetLogLevel("info")
 
-	startReplicas(4)
+	startReplicas(5)
 
 	<-time.After(5 * time.Hour)
 }
@@ -58,7 +58,7 @@ func startReplicas(num int) {
 
 			Crypto:            crypto,
 			Consensus:         "chainedhotstuff",
-			LeaderRotation:    "round-robin",
+			LeaderRotation:    "reputation",
 			BatchSize:         1,
 			ConnectTimeout:    durationpb.New(5 * time.Second),
 			InitialTimeout:    durationpb.New(100 * time.Millisecond),
@@ -73,7 +73,7 @@ func startReplicas(num int) {
 		ops = append(ops, opts)
 		conf = append(conf, &orchestrationpb.ReplicaInfo{
 			ID:          uint32(i),
-			Address:     "127.0.0.1:" + strconv.Itoa(7000+i),
+			Address:     "127.0.0.1",
 			PublicKey:   keyChain.PublicKey,
 			ReplicaPort: uint32(7000 + i),
 			ClientPort:  uint32(8000 + i),
@@ -102,8 +102,6 @@ func startReplicas(num int) {
 	}
 
 	for _, r := range replicas {
-		_ = r.Connect(replicaInfos)
-		r.Conf = conf
 		r.Start()
 	}
 

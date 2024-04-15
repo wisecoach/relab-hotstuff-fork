@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/wisecoach/robust-hotstuff/logging"
 	"github.com/wisecoach/robust-hotstuff/proto"
-	"go.uber.org/zap"
+	pb "google.golang.org/protobuf/proto"
 	"sync/atomic"
 	"time"
 )
@@ -50,7 +50,7 @@ func (stream *Stream) Send(msg *proto.Message) error {
 }
 
 func (stream *Stream) Recv() (*proto.Message, error) {
-	return nil, nil
+	return stream.ConsensusClient.Recv()
 }
 
 func (stream *Stream) serviceStream() {
@@ -71,10 +71,30 @@ func (stream *Stream) serviceStream() {
 }
 
 func (stream *Stream) sendMessage(msg *proto.Message) {
-	err := stream.ConsensusClient.Send(msg)
-	stream.logger.Debug(fmt.Sprintf("send message to %s, type=%s", stream.NodeName, msg.Type.String()))
+	maxRetries := 5
+	var err error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err = stream.ConsensusClient.Send(msg)
+		if err != nil {
+			bytes, _ := pb.Marshal(msg)
+			stream.logger.Errorf("failed to send message %s, err = %s, size=%d, attempt=%d", msg.Type, err.Error(), len(bytes), attempt)
+		}
+		<-time.After(time.Millisecond * 100)
+		if err == nil {
+			// 发送成功，退出循环
+			break
+		}
+	}
+	// stream.logger.Debug(fmt.Sprintf("send message to %s, type=%s", stream.NodeName, msg.Type.String()))
 	if err != nil {
-		stream.logger.Error("failed to send message", zap.Error(err))
+		bytes, _ := pb.Marshal(msg)
+		stream.logger.Errorf("failed to send message %s, err = %s, size=%d", msg.Type, err.Error(), len(bytes))
+		// if msg.Type == proto.MessageType_COMPENSATE {
+		// 	compensate := msg.GetCompensate().Compensation
+		// 	stream.logger.Errorf("compensate message, num_next_view=%d", len(compensate.NextViews))
+		// }
+		// jsonBytes, _ := json.Marshal(msg)
+		// stream.logger.Errorf("failed to send message, msg = %s", string(jsonBytes))
 		return
 	}
 }
