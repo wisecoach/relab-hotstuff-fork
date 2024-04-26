@@ -187,7 +187,7 @@ func (e *Experiment) assignReplicasAndClients() (err error) {
 	e.replicaOpts = make(map[hotstuff.ID]*orchestrationpb.ReplicaOpts)
 	e.hostsToClients = make(map[string][]hotstuff.ID)
 	replicaLocationInfo := make(map[uint32]string)
-	nextReplicaID := hotstuff.ID(1)
+	nextReplicaID := hotstuff.ID(e.NumReplicas)
 	nextClientID := hotstuff.ID(1)
 
 	// number of replicas that should be auto assigned
@@ -283,8 +283,8 @@ func (e *Experiment) assignReplicasAndClients() (err error) {
 			replicaOpts.LocationInfo = replicaLocationInfo
 			e.hostsToReplicas[host] = append(e.hostsToReplicas[host], nextReplicaID)
 			e.replicaOpts[nextReplicaID] = replicaOpts
-			e.Logger.Infof("replica %d assigned to host %s", nextReplicaID, host)
-			nextReplicaID++
+			e.Logger.Infof("replica %d assigned to host %s, byzantine: %s", nextReplicaID, host, byzantineStrategy)
+			nextReplicaID--
 		}
 
 		for i := 0; i < numClients; i++ {

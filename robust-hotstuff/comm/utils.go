@@ -1,90 +1,12 @@
 package comm
 
 import (
-	"context"
-	"crypto/x509"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/peer"
 	"math/rand"
 	"sync"
 	"time"
 )
 
 type CertificateComparator func([]byte, []byte) bool
-
-type MemberMapping struct {
-	id2stub       map[string]*Stub
-	SamePublicKey CertificateComparator
-}
-
-// ByID retrieves the Stub with the given ID from the MemberMapping
-func (mp *MemberMapping) ByID(ID string) *Stub {
-	return mp.id2stub[ID]
-}
-
-// LookupByClientCert retrieves a Stub with the given client certificate
-func (mp *MemberMapping) LookupByClientCert(cert []byte) *Stub {
-	for _, stub := range mp.id2stub {
-		if mp.SamePublicKey(stub.ClientTLSCert, cert) {
-			return stub
-		}
-	}
-	return nil
-}
-
-func (mp *MemberMapping) Put(ID string, stub *Stub) {
-	mp.id2stub[ID] = stub
-}
-
-func (mp *MemberMapping) Remove(ID string) {
-	delete(mp.id2stub, ID)
-}
-
-func ExtractRemoteAddress(ctx context.Context) string {
-	var remoteAddress string
-	p, ok := peer.FromContext(ctx)
-	if !ok {
-		return ""
-	}
-	if address := p.Addr; address != nil {
-		remoteAddress = address.String()
-	}
-	return remoteAddress
-}
-
-// ExtractCertificateFromContext returns the TLS certificate (if applicable)
-// from the given context of a gRPC stream
-func ExtractCertificateFromContext(ctx context.Context) *x509.Certificate {
-	pr, extracted := peer.FromContext(ctx)
-	if !extracted {
-		return nil
-	}
-
-	authInfo := pr.AuthInfo
-	if authInfo == nil {
-		return nil
-	}
-
-	tlsInfo, isTLSConn := authInfo.(credentials.TLSInfo)
-	if !isTLSConn {
-		return nil
-	}
-	certs := tlsInfo.State.PeerCertificates
-	if len(certs) == 0 {
-		return nil
-	}
-	return certs[0]
-}
-
-// ExtractRawCertificateFromContext returns the raw TLS certificate (if applicable)
-// from the given context of a gRPC stream
-func ExtractRawCertificateFromContext(ctx context.Context) []byte {
-	cert := ExtractCertificateFromContext(ctx)
-	if cert == nil {
-		return nil
-	}
-	return cert.Raw
-}
 
 type arguments struct {
 	a, b string

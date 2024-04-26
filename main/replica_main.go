@@ -20,7 +20,7 @@ func main() {
 
 	logging.SetLogLevel("info")
 
-	startReplicas(5)
+	startReplicas(64)
 
 	<-time.After(5 * time.Hour)
 }

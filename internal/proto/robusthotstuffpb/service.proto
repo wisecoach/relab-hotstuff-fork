@@ -1,9 +1,10 @@
 syntax = "proto3";
 
 import "hotstuff.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/relab/hotstuff/internal/proto/robusthotstuffpb";
 
 service Hotstuff {
-  rpc Consensus(stream Message) returns (stream Message);
+  rpc Consensus(Message) returns (google.protobuf.Empty);
 }

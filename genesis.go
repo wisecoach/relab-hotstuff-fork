@@ -68,7 +68,7 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			Dlq:                 0.8,
 			Ptimeout:            0.5,
 		},
-		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Millisecond * 5000},
+		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Second * 1},
 		CommConfig: &types.OnChainCommConfig{
 			Nodes: nodes,
 		},

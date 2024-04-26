@@ -15,9 +15,9 @@ type SecureDialer interface {
 
 // ConnectionMapper maps certificates to connections
 type ConnectionMapper interface {
-	Lookup(key []byte) (*grpc.ClientConn, bool)
-	Put(key []byte, conn *grpc.ClientConn)
-	Remove(key []byte)
+	Lookup(id string) (*grpc.ClientConn, bool)
+	Put(id string, conn *grpc.ClientConn)
+	Remove(id string)
 	Size() int
 }
 
@@ -25,19 +25,19 @@ type ConnByCertMap map[string]*grpc.ClientConn
 
 // Lookup looks up a certificate and returns the connection that was mapped
 // to the certificate, and whether it was found or not
-func (cbc ConnByCertMap) Lookup(cert []byte) (*grpc.ClientConn, bool) {
-	conn, ok := cbc[string(cert)]
+func (cbc ConnByCertMap) Lookup(id string) (*grpc.ClientConn, bool) {
+	conn, ok := cbc[id]
 	return conn, ok
 }
 
 // Put associates the given connection to the certificate
-func (cbc ConnByCertMap) Put(cert []byte, conn *grpc.ClientConn) {
-	cbc[string(cert)] = conn
+func (cbc ConnByCertMap) Put(id string, conn *grpc.ClientConn) {
+	cbc[id] = conn
 }
 
 // Remove removes the connection that is associated to the given certificate
-func (cbc ConnByCertMap) Remove(cert []byte) {
-	delete(cbc, string(cert))
+func (cbc ConnByCertMap) Remove(id string) {
+	delete(cbc, id)
 }
 
 // Size returns the size of the connections by certificate mapping
@@ -60,9 +60,9 @@ type ConnectionStore struct {
 	dialer      SecureDialer
 }
 
-func (c *ConnectionStore) Connection(endpoint string, expectedServerCert []byte) (*grpc.ClientConn, error) {
+func (c *ConnectionStore) Connection(id string, endpoint string) (*grpc.ClientConn, error) {
 	c.lock.RLock()
-	conn, alreadyConnected := c.Connections.Lookup(expectedServerCert)
+	conn, alreadyConnected := c.Connections.Lookup(id)
 	c.lock.RUnlock()
 
 	if alreadyConnected {
@@ -70,15 +70,15 @@ func (c *ConnectionStore) Connection(endpoint string, expectedServerCert []byte)
 	}
 
 	// Else, we need to connect to the remote endpoint
-	return c.connect(endpoint, expectedServerCert)
+	return c.connect(id, endpoint)
 }
 
-func (c *ConnectionStore) connect(endpoint string, expectedServerCert []byte) (*grpc.ClientConn, error) {
+func (c *ConnectionStore) connect(id string, endpoint string) (*grpc.ClientConn, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	// Check again to see if some other goroutine has already connected while
 	// we were waiting on the lock
-	conn, alreadyConnected := c.Connections.Lookup(expectedServerCert)
+	conn, alreadyConnected := c.Connections.Lookup(id)
 	if alreadyConnected {
 		return conn, nil
 	}
@@ -88,19 +88,19 @@ func (c *ConnectionStore) connect(endpoint string, expectedServerCert []byte) (*
 		return nil, err
 	}
 
-	c.Connections.Put(expectedServerCert, conn)
+	c.Connections.Put(id, conn)
 	return conn, nil
 }
 
 // Disconnect closes the gRPC connection that is mapped to the given certificate
-func (c *ConnectionStore) Disconnect(expectedServerCert []byte) {
+func (c *ConnectionStore) Disconnect(id string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	conn, connected := c.Connections.Lookup(expectedServerCert)
+	conn, connected := c.Connections.Lookup(id)
 	if !connected {
 		return
 	}
 	conn.Close()
-	c.Connections.Remove(expectedServerCert)
+	c.Connections.Remove(id)
 }

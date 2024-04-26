@@ -2,10 +2,9 @@ package comm
 
 import (
 	"context"
-	"fmt"
 	pb "github.com/relab/hotstuff/internal/proto/robusthotstuffpb"
 	"github.com/wisecoach/robust-hotstuff/proto"
-	"io"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Dispatcher interface {
@@ -17,30 +16,10 @@ type Service struct {
 	Dispatcher Dispatcher
 }
 
-type ConsensusStream interface {
-	pb.Hotstuff_ConsensusServer
-}
-
-func (s *Service) Consensus(stream pb.Hotstuff_ConsensusServer) error {
-	for {
-		err := s.handleMessage(stream)
-		if err == io.EOF {
-			fmt.Println(err.Error())
-			return nil
-		}
-		if err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+func (s *Service) Consensus(ctx context.Context, msg *proto.Message) (*emptypb.Empty, error) {
+	err := s.Dispatcher.DispatchConsensus(ctx, msg)
+	if err != nil {
+		return &emptypb.Empty{}, err
 	}
-}
-
-func (s *Service) handleMessage(stream ConsensusStream) error {
-	msg, err := stream.Recv()
-	if err == io.EOF {
-		return err
-	}
-
-	go s.Dispatcher.DispatchConsensus(stream.Context(), msg)
-	return nil
+	return &emptypb.Empty{}, nil
 }

@@ -23,7 +23,7 @@ func (h *MessageHandler) OnConsensus(sender string, req *proto.Message) error {
 }
 
 type CommAdapter struct {
-	comm.Comm
+	*comm.Comm
 	H      *MessageHandler
 	Server *comm.Service
 	Ops    *orchestrationpb.ReplicaOpts
@@ -73,7 +73,7 @@ func NewCommAdapter(builder *modules.Builder, ops *orchestrationpb.ReplicaOpts) 
 
 	commImpl := comm.New(config, compareCert, h)
 	commAdapter := &CommAdapter{
-		Comm: *commImpl,
+		Comm: commImpl,
 		H:    h,
 		Server: &comm.Service{
 			Dispatcher: commImpl,
