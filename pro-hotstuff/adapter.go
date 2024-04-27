@@ -1,4 +1,4 @@
-package robust_hotstuff
+package pro_hotstuff
 
 import "github.com/relab/hotstuff/modules"
 

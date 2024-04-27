@@ -3,7 +3,7 @@ package comm
 import (
 	"context"
 	pb "github.com/relab/hotstuff/internal/proto/robusthotstuffpb"
-	"github.com/wisecoach/robust-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

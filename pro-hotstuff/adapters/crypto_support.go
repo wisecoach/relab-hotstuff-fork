@@ -8,12 +8,12 @@ import (
 	"errors"
 	"github.com/relab/hotstuff"
 	hecdsa "github.com/relab/hotstuff/crypto/ecdsa"
-	"github.com/wisecoach/robust-hotstuff/logging"
+	"github.com/wisecoach/pro-hotstuff/logging"
 	"sync"
 
 	hpb "github.com/relab/hotstuff/internal/proto/hotstuffpb"
 	"github.com/relab/hotstuff/modules"
-	"github.com/wisecoach/robust-hotstuff/types"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 )

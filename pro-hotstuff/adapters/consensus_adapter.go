@@ -1,17 +1,16 @@
 package adapters
 
 import (
-	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/logging"
 	"github.com/relab/hotstuff/modules"
-	reputation2 "github.com/relab/hotstuff/robust-hotstuff/reputation"
-	"github.com/wisecoach/robust-hotstuff/api"
-	"github.com/wisecoach/robust-hotstuff/consensus"
-	"github.com/wisecoach/robust-hotstuff/proto"
-	"github.com/wisecoach/robust-hotstuff/reputation"
-	"github.com/wisecoach/robust-hotstuff/storage"
-	"github.com/wisecoach/robust-hotstuff/threat"
-	"github.com/wisecoach/robust-hotstuff/types"
+	reputation2 "github.com/relab/hotstuff/pro-hotstuff/reputation"
+	"github.com/wisecoach/pro-hotstuff/api"
+	"github.com/wisecoach/pro-hotstuff/consensus"
+	"github.com/wisecoach/pro-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/reputation"
+	"github.com/wisecoach/pro-hotstuff/storage"
+	"github.com/wisecoach/pro-hotstuff/threat"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"time"
 )
 
@@ -70,14 +69,14 @@ func (c *ConsensusAdapter) Start() {
 }
 
 func (c *ConsensusAdapter) HandleMessage(sender types.ID, msg *proto.Message) {
-	if msg.Type == proto.MessageType_PROPOSAL && msg.GetProposal().Proposal.Type == proto.PhaseType_PREPARE {
-		block, err := c.blockSupport.DeserializeBlock(msg.GetProposal().Proposal.Block)
-		if err != nil {
-			return
-		}
-		b := block.(*hotstuff.Block)
-		c.acceptor.Proposed(b.Command())
-	}
+	// if msg.Type == proto.MessageType_PROPOSAL && msg.GetProposal().Proposal.Type == proto.PhaseType_PREPARE {
+	// 	block, err := c.blockSupport.DeserializeBlock(msg.GetProposal().Proposal.Block)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	b := block.(*hotstuff.Block)
+	// 	c.acceptor.Proposed(b.Command())
+	// }
 
 	if c.byzantineStrategy == "silence" {
 		c.logger.Debugf("stimulate silence attack")

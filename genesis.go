@@ -3,8 +3,8 @@ package hotstuff
 import (
 	"encoding/json"
 	"github.com/relab/hotstuff/internal/proto/orchestrationpb"
-	"github.com/wisecoach/robust-hotstuff/proto"
-	"github.com/wisecoach/robust-hotstuff/types"
+	"github.com/wisecoach/pro-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"sort"
 	"strconv"
 	"time"
@@ -68,7 +68,7 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			Dlq:                 0.8,
 			Ptimeout:            0.5,
 		},
-		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Second * 1},
+		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Hour * 1},
 		CommConfig: &types.OnChainCommConfig{
 			Nodes: nodes,
 		},
@@ -103,13 +103,6 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			BlockInfo:  block.Info,
 			Signatures: nil,
 		},
-		PrecommitQc: &proto.QuorumCert{
-			Type:       proto.PhaseType_PRECOMMIT,
-			Epoch:      1,
-			View:       1,
-			BlockInfo:  block.Info,
-			Signatures: nil,
-		},
 		CommitQc: &proto.QuorumCert{
 			Type:       proto.PhaseType_COMMIT,
 			Epoch:      1,
@@ -117,7 +110,7 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			BlockInfo:  block.Info,
 			Signatures: nil,
 		},
-		NextViewCert: &proto.NextViewCert{
+		NextViewQc: &proto.NextViewQC{
 			NextViews: make(map[string]*proto.NextView),
 			Epoch:     0,
 			View:      1,

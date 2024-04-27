@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/relab/hotstuff/robust-hotstuff/adapters"
+	"github.com/relab/hotstuff/pro-hotstuff/adapters"
 	"io"
 	"net"
 	"sort"

@@ -1,9 +1,9 @@
 package reputation
 
 import (
-	"github.com/wisecoach/robust-hotstuff/api"
-	"github.com/wisecoach/robust-hotstuff/proto"
-	"github.com/wisecoach/robust-hotstuff/types"
+	"github.com/wisecoach/pro-hotstuff/api"
+	"github.com/wisecoach/pro-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"math"
 	"sync"
 )
@@ -132,7 +132,7 @@ func (rm *NoOpReputationManager) Quorum(view uint64) int {
 	return int(math.Ceil(float64(2*len(rm.participates)+1) / 3))
 }
 
-func (rm *NoOpReputationManager) RefreshReputation(cert *proto.NextViewCert) {
+func (rm *NoOpReputationManager) RefreshReputation(cert *proto.NextViewQC) {
 	rm.rwLock.Lock()
 	defer rm.rwLock.Unlock()
 

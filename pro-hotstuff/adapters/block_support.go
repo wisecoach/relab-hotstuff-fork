@@ -6,8 +6,8 @@ import (
 	"github.com/relab/hotstuff"
 	hpb "github.com/relab/hotstuff/internal/proto/hotstuffpb"
 	"github.com/relab/hotstuff/modules"
-	rhpb "github.com/wisecoach/robust-hotstuff/proto"
-	"github.com/wisecoach/robust-hotstuff/types"
+	rhpb "github.com/wisecoach/pro-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"google.golang.org/protobuf/proto"
 )
 

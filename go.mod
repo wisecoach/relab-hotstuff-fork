@@ -15,7 +15,7 @@ require (
 	github.com/relab/wrfs v0.0.0-20220416082020-a641cd350078
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.11.0
-	github.com/wisecoach/robust-hotstuff v0.0.1
+	github.com/wisecoach/pro-hotstuff v0.0.1
 	go-hep.org/x/hep v0.31.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
@@ -26,7 +26,7 @@ require (
 	google.golang.org/protobuf v1.32.0
 )
 
-replace github.com/wisecoach/robust-hotstuff v0.0.1 => /mnt/E/blockchain/robust-hotstuff
+replace github.com/wisecoach/pro-hotstuff v0.0.1 => /mnt/E/blockchain/pro-hotstuff
 
 require (
 	git.sr.ht/~sbinet/gg v0.3.1 // indirect

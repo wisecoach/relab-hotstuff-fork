@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"github.com/relab/hotstuff/internal/proto/orchestrationpb"
 	"github.com/relab/hotstuff/modules"
-	"github.com/relab/hotstuff/robust-hotstuff/comm"
-	"github.com/wisecoach/robust-hotstuff/api"
-	"github.com/wisecoach/robust-hotstuff/logging"
-	"github.com/wisecoach/robust-hotstuff/proto"
-	"github.com/wisecoach/robust-hotstuff/types"
+	"github.com/relab/hotstuff/pro-hotstuff/comm"
+	"github.com/wisecoach/pro-hotstuff/api"
+	"github.com/wisecoach/pro-hotstuff/logging"
+	"github.com/wisecoach/pro-hotstuff/proto"
+	"github.com/wisecoach/pro-hotstuff/types"
 	"time"
 )
 

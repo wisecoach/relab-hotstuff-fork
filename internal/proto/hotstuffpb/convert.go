@@ -2,7 +2,7 @@
 package hotstuffpb
 
 import (
-	rhpb "github.com/wisecoach/robust-hotstuff/proto"
+	rhpb "github.com/wisecoach/pro-hotstuff/proto"
 	"google.golang.org/protobuf/proto"
 	"math/big"
 
