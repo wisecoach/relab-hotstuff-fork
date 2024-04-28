@@ -95,26 +95,15 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 		Timestamp:  nil,
 		Proposer:   "1",
 	}
+	qc := &proto.QuorumCert{
+		Type:       proto.PhaseType_GENERIC,
+		Epoch:      1,
+		View:       1,
+		BlockInfo:  block.Info,
+		Signatures: nil,
+	}
 	block.Certs = &proto.BlockCerts{
-		PrepareQc: &proto.QuorumCert{
-			Type:       proto.PhaseType_PREPARE,
-			Epoch:      1,
-			View:       1,
-			BlockInfo:  block.Info,
-			Signatures: nil,
-		},
-		CommitQc: &proto.QuorumCert{
-			Type:       proto.PhaseType_COMMIT,
-			Epoch:      1,
-			View:       1,
-			BlockInfo:  block.Info,
-			Signatures: nil,
-		},
-		NextViewQc: &proto.NextViewQC{
-			NextViews: make(map[string]*proto.NextView),
-			Epoch:     0,
-			View:      1,
-		},
+		GenericQc: qc,
 	}
 	genesisBlock = block
 }

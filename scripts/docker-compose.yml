@@ -1,23 +1,28 @@
 version: '3.8'
 
 services:
-  worker:
-    build:
-      context: ".."
-      dockerfile: "scripts/Dockerfile.worker"
-    networks:
-      hotstuff:
 
   controller:
-    build:
-      context: ".."
-      dockerfile: "scripts/Dockerfile.controller"
-    networks:
-      hotstuff:
+    image: hotstuff_controller:latest
+    container_name: hotstuff_controller
+    extra_hosts:
+      - "hotstuff_worker_1:10.7.95.114"
+      - "hotstuff_worker_2:10.7.95.115"
+      - "hotstuff_worker_3:10.7.95.116"
+      - "hotstuff_worker_4:10.7.95.117"
+      - "hotstuff_worker_5:10.7.95.118"
+      - "hotstuff_worker_6:10.7.95.119"
+      - "hotstuff_worker_7:10.7.95.120"
+      - "hotstuff_worker_8:10.7.95.35"
+      - "hotstuff_worker_9:10.7.95.36"
+      - "hotstuff_worker_10:10.7.95.37"
+      - "hotstuff_worker_11:10.7.95.38"
+      - "hotstuff_worker_12:10.7.95.39"
+      - "hotstuff_worker_13:10.7.95.40"
+      - "hotstuff_worker_14:10.7.95.41"
+      - "hotstuff_worker_15:10.7.95.42"
+      - "hotstuff_worker_16:10.7.95.43"
+      - "hotstuff_worker_17:10.7.95.44"
+      - "hotstuff_worker_18:10.7.95.45"
     entrypoint: sleep infinity
 
-networks:
-  hotstuff:
-    ipam:
-      config:
-        - subnet: "192.168.1.0/24"

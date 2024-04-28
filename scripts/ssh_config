@@ -2,4 +2,5 @@
 
 Host hotstuff_worker_*
 	User root
+	Port 10033
 	IdentityFile ~/.ssh/id

@@ -8,6 +8,7 @@ RUN sed -i s/#PermitRootLogin.*/PermitRootLogin\ prohibit-password/ /etc/ssh/ssh
 RUN sed -i s/#PubkeyAuthentication.*/PubkeyAuthentication\ yes/ /etc/ssh/sshd_config
 
 ADD scripts/entrypoint.sh /entrypoint.sh
+ADD scripts/hosts /etc/hosts
 
 WORKDIR /root
 ADD scripts/id.pub .ssh/authorized_keys

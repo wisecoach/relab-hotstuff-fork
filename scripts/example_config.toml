@@ -1,15 +1,28 @@
-clients = 2
-replicas = 8
+clients = 1
+replicas = 4
 
-hosts = [ 
+hosts = [
 	"hotstuff_worker_1",
 	"hotstuff_worker_2",
 	"hotstuff_worker_3",
 	"hotstuff_worker_4",
+	"hotstuff_worker_5",
+	"hotstuff_worker_6",
+	"hotstuff_worker_7",
+	"hotstuff_worker_8",
+	"hotstuff_worker_9",
+	"hotstuff_worker_10",
+	"hotstuff_worker_11",
+	"hotstuff_worker_12"
 ]
 
-# specific assingments for some hosts
+
 [[hosts-config]]
 name = "hotstuff_worker_1"
-clients = 2
+clients = 1
+replicas = 0
+
+[[hosts-config]]
+name = "hotstuff_worker_2"
+clients = 0
 replicas = 0

@@ -132,7 +132,7 @@ func (rm *NoOpReputationManager) Quorum(view uint64) int {
 	return int(math.Ceil(float64(2*len(rm.participates)+1) / 3))
 }
 
-func (rm *NoOpReputationManager) RefreshReputation(cert *proto.NextViewQC) {
+func (rm *NoOpReputationManager) RefreshReputation(cert *proto.QuorumCert) {
 	rm.rwLock.Lock()
 	defer rm.rwLock.Unlock()
 
