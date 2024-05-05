@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/logging"
 	"github.com/relab/hotstuff/modules"
@@ -76,19 +77,19 @@ func (c *ChainSupportAdapter) GenerateBlock(txs []types.Transaction, info *proto
 }
 
 func (c *ChainSupportAdapter) OrderedTransactions() ([]types.Transaction, error) {
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	//
-	// var cmd hotstuff.Command
-	// if c.newEpochRate > 0 && !c.sentNewEpoch && c.startTime.Add(c.newEpochDuration).Before(time.Now()) {
-	// 	c.logger.Info("generate new epoch command")
-	// 	cmd = hotstuff.GetNewEpochCmd()
-	// 	c.sentNewEpoch = true
-	// } else {
-	// 	cmd, _ = c.cmdQueue.Get(ctx)
-	// }
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	<-time.After(1 * time.Millisecond)
-	cmd := hotstuff.Command("test")
+	var cmd hotstuff.Command
+	if c.newEpochRate > 0 && !c.sentNewEpoch && c.startTime.Add(c.newEpochDuration).Before(time.Now()) {
+		c.logger.Info("generate new epoch command")
+		cmd = hotstuff.GetNewEpochCmd()
+		c.sentNewEpoch = true
+	} else {
+		cmd, _ = c.cmdQueue.Get(ctx)
+	}
+
+	// <-time.After(1 * time.Millisecond)
+	// cmd := hotstuff.Command("test")
 	return []types.Transaction{cmd}, nil
 }

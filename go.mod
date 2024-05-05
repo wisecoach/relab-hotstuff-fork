@@ -26,7 +26,7 @@ require (
 	google.golang.org/protobuf v1.32.0
 )
 
-replace github.com/wisecoach/pro-hotstuff v0.0.1 => /mnt/E/blockchain/pro-hotstuff
+replace github.com/wisecoach/pro-hotstuff v0.0.1 => /mnt/E/blockchain/pipelined-pro-hotstuff
 
 require (
 	git.sr.ht/~sbinet/gg v0.3.1 // indirect

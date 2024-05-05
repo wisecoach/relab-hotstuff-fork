@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"github.com/relab/hotstuff"
 	"github.com/relab/hotstuff/logging"
 	"github.com/relab/hotstuff/modules"
 	reputation2 "github.com/relab/hotstuff/pro-hotstuff/reputation"
@@ -69,14 +70,14 @@ func (c *ConsensusAdapter) Start() {
 }
 
 func (c *ConsensusAdapter) HandleMessage(sender types.ID, msg *proto.Message) {
-	// if msg.Type == proto.MessageType_PROPOSAL && msg.GetProposal().Proposal.Type == proto.PhaseType_PREPARE {
-	// 	block, err := c.blockSupport.DeserializeBlock(msg.GetProposal().Proposal.Block)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	b := block.(*hotstuff.Block)
-	// 	c.acceptor.Proposed(b.Command())
-	// }
+	if msg.Type == proto.MessageType_PROPOSAL {
+		block, err := c.blockSupport.DeserializeBlock(msg.GetProposal().Proposal.Block)
+		if err != nil {
+			return
+		}
+		b := block.(*hotstuff.Block)
+		c.acceptor.Proposed(b.Command())
+	}
 
 	if c.byzantineStrategy == "silence" {
 		c.logger.Debugf("stimulate silence attack")
