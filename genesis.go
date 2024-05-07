@@ -68,7 +68,7 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			Dlq:                 0.8,
 			Ptimeout:            0.5,
 		},
-		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Second * 1},
+		SyncConfig: &types.OnChainSyncConfig{BaseTimeout: time.Hour * 1},
 		CommConfig: &types.OnChainCommConfig{
 			Nodes: nodes,
 		},
@@ -96,14 +96,14 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 		Proposer:   "1",
 	}
 	block.Certs = &proto.BlockCerts{
-		PrepareQc: &proto.QuorumCert{
+		HighQc: &proto.QuorumCert{
 			Type:       proto.PhaseType_PREPARE,
 			Epoch:      1,
 			View:       1,
 			BlockInfo:  block.Info,
 			Signatures: nil,
 		},
-		PrecommitQc: &proto.QuorumCert{
+		LockedQc: &proto.QuorumCert{
 			Type:       proto.PhaseType_PRECOMMIT,
 			Epoch:      1,
 			View:       1,
@@ -117,10 +117,12 @@ func InitGenesis(replicaInfos []*orchestrationpb.ReplicaInfo) {
 			BlockInfo:  block.Info,
 			Signatures: nil,
 		},
-		NextViewCert: &proto.NextViewCert{
-			NextViews: make(map[string]*proto.NextView),
+		NextViewQc: &proto.QuorumCert{
+			Type:      proto.PhaseType_NEXT_VIEW,
 			Epoch:     0,
 			View:      1,
+			BlockInfo: block.Info,
+			NextViews: make([]*proto.NextView, 0),
 		},
 	}
 	genesisBlock = block

@@ -88,7 +88,7 @@ func (sig MultiSignature) ToBytes() []byte {
 	return b
 }
 
-// Participants returns the IDs of replicas who participated in the threshold signature.
+// Participants returns the IDs of replicas who validatord in the threshold signature.
 func (sig MultiSignature) Participants() hotstuff.IDSet {
 	return sig
 }

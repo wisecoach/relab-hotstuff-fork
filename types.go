@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// IDSet implements a set of replica IDs. It is used to show which replicas participated in some event.
+// IDSet implements a set of replica IDs. It is used to show which replicas validatord in some event.
 type IDSet interface {
 	// Add adds an ID to the set.
 	Add(id ID)
@@ -121,7 +121,7 @@ type PrivateKey interface {
 // QuorumSignature is a signature that is only valid when it contains the signatures of a quorum of replicas.
 type QuorumSignature interface {
 	ToBytes
-	// Participants returns the IDs of replicas who participated in the threshold signature.
+	// Participants returns the IDs of replicas who validatord in the threshold signature.
 	Participants() IDSet
 }
 

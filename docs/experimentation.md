@@ -233,7 +233,7 @@ these additional flags are used:
   the cli will read `~/.ssh/config` instead.
 - `--hosts` a comma separated list of hosts to connect to. It is preferable to use host names that have entries in the ssh config file.
 - `--worker` runs a worker locally, in addition to the remote hosts specified. Use this if you want the local machine
-  to participate in the experiment.
+  to validator in the experiment.
 
 Additionally, it is possible to specify an *internal address* for each host.
 The internal address is used by replicas instead of the address used by the controller.

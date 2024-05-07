@@ -67,7 +67,7 @@ func (r *Replica) Metadata() map[string]string {
 	return r.md
 }
 
-// Config holds information about the current configuration of replicas that participate in the protocol,
+// Config holds information about the current configuration of replicas that validator in the protocol,
 // and some information about the local replica. It also provides methods to send messages to the other replicas.
 type Config struct {
 	opts      []gorums.ManagerOption

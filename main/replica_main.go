@@ -18,9 +18,9 @@ import (
 
 func main() {
 
-	logging.SetLogLevel("info")
+	logging.SetLogLevel("debug")
 
-	startReplicas(64)
+	startReplicas(4)
 
 	<-time.After(5 * time.Hour)
 }

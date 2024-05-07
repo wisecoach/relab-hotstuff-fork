@@ -15,7 +15,7 @@ func NewReputationManager() api.ReputationManager {
 		onChainConfig: nil,
 		reputationMap: make(map[types.ID]*types.Reputation),
 		idQueue:       make([]string, 0),
-		participates:  make([]types.ID, 0),
+		validators:    make([]types.ID, 0),
 		rwLock:        sync.RWMutex{},
 	}
 }
@@ -27,7 +27,7 @@ type NoOpReputationManager struct {
 
 	reputationMap map[types.ID]*types.Reputation
 	idQueue       []string
-	participates  []types.ID
+	validators    []types.ID
 
 	rwLock sync.RWMutex
 }
@@ -43,9 +43,9 @@ func (rm *NoOpReputationManager) GetLeader(view uint64) (types.ID, error) {
 	rm.rwLock.RLock()
 	defer rm.rwLock.RUnlock()
 
-	participates := rm.participates
-	index := int(view) % len(participates)
-	return participates[index], nil
+	validators := rm.validators
+	index := int(view) % len(validators)
+	return validators[index], nil
 }
 
 func (rm *NoOpReputationManager) SaveCompensation(id string, compensation *proto.Compensation) {
@@ -78,22 +78,22 @@ func (rm *NoOpReputationManager) NextViewsToConfirm() map[uint64]*proto.NextView
 	return make(map[uint64]*proto.NextView)
 }
 
-func (rm *NoOpReputationManager) SelectParticipates(num int, view uint64) []types.ID {
+func (rm *NoOpReputationManager) SelectValidators(num int, view uint64) []types.ID {
 	rm.rwLock.RLock()
 	defer rm.rwLock.RUnlock()
 
-	if num > len(rm.participates) {
-		return rm.participates
+	if num > len(rm.validators) {
+		return rm.validators
 	}
 
-	return rm.participates[:num]
+	return rm.validators[:num]
 }
 
-func (rm *NoOpReputationManager) SelectParticipatesToCompensate(view uint64) []types.ID {
+func (rm *NoOpReputationManager) SelectValidatorsToCompensate(view uint64) []types.ID {
 	rm.rwLock.RLock()
 	defer rm.rwLock.RUnlock()
 
-	return rm.participates
+	return rm.validators
 }
 
 func (rm *NoOpReputationManager) View() uint64 {
@@ -117,28 +117,28 @@ func (rm *NoOpReputationManager) Reputation(id types.ID) *types.Reputation {
 	return rm.reputationMap[id]
 }
 
-func (rm *NoOpReputationManager) Participates(view uint64) []types.ID {
+func (rm *NoOpReputationManager) Validators(view uint64) []types.ID {
 	rm.rwLock.RLock()
 	defer rm.rwLock.RUnlock()
 
-	return rm.participates
+	return rm.validators
 }
 
-func (rm *NoOpReputationManager) IsParticipate(view uint64, id types.ID) bool {
+func (rm *NoOpReputationManager) IsValidator(view uint64, id types.ID) bool {
 	return true
 }
 
 func (rm *NoOpReputationManager) Quorum(view uint64) int {
-	return int(math.Ceil(float64(2*len(rm.participates)+1) / 3))
+	return int(math.Ceil(float64(2*len(rm.validators)+1) / 3))
 }
 
-func (rm *NoOpReputationManager) RefreshReputation(cert *proto.NextViewCert) {
+func (rm *NoOpReputationManager) RefreshReputation(nextViewQC *proto.QuorumCert) {
 	rm.rwLock.Lock()
 	defer rm.rwLock.Unlock()
 
 	var view uint64
-	for _, nextView := range cert.NextViews {
-		view = nextView.Payload.View
+	for _, nextView := range nextViewQC.NextViews {
+		view = nextView.View
 		break
 	}
 
@@ -155,14 +155,14 @@ func (rm *NoOpReputationManager) Configure(epoch uint64, view uint64, config *ty
 
 	rm.reputationMap = make(map[types.ID]*types.Reputation)
 	rm.idQueue = config.IdQueue
-	rm.participates = make([]types.ID, 0)
+	rm.validators = make([]types.ID, 0)
 
 	for _, id := range rm.idQueue {
 		rm.reputationMap[types.ID(id)] = &types.Reputation{
 			LR: rm.onChainConfig.LRDefault,
 			SR: rm.onChainConfig.SRDefault,
 		}
-		rm.participates = append(rm.participates, types.ID(id))
+		rm.validators = append(rm.validators, types.ID(id))
 	}
 
 	return nil

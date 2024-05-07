@@ -92,7 +92,7 @@ func (priv *PrivateKey) Public() hotstuff.PublicKey {
 }
 
 // AggregateSignature is a bls12-381 aggregate signature. The participants field contains the IDs of the replicas that
-// participated in signature creation. This allows us to build an aggregated public key to verify the signature.
+// validatord in signature creation. This allows us to build an aggregated public key to verify the signature.
 type AggregateSignature struct {
 	sig          bls12.PointG2
 	participants crypto.Bitfield // The ids of the replicas who submitted signatures.
@@ -120,7 +120,7 @@ func (agg *AggregateSignature) ToBytes() []byte {
 	return b
 }
 
-// Participants returns the IDs of replicas who participated in the threshold signature.
+// Participants returns the IDs of replicas who validatord in the threshold signature.
 func (agg AggregateSignature) Participants() hotstuff.IDSet {
 	return &agg.participants
 }

@@ -108,7 +108,7 @@ type Replica interface {
 
 //go:generate mockgen -destination=../internal/mocks/configuration_mock.go -package=mocks . Configuration
 
-// Configuration holds information about the current configuration of replicas that participate in the protocol,
+// Configuration holds information about the current configuration of replicas that validator in the protocol,
 // It provides methods to send messages to the other replicas.
 type Configuration interface {
 	// Replicas returns all of the replicas in the configuration.
